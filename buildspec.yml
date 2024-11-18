@@ -13,22 +13,19 @@ env:
 phases:
   pre_build:
     commands:
-      # Docker push를 할 ECR에 로그인 필요
-      # https://awscli.amazonaws.com/v2/documentation/api/latest/reference/ecr/get-login-password.html
-      # https://stackoverflow.com/questions/77488134/codebuild-error-exit-status-127-file-name-too-long
       - echo Logging in to Amazon ECR...
       - aws --version
+      - AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output text)
       - ECR_PASSWORD=$(aws ecr get-login-password --region $AWS_DEFAULT_REGION)
-      - AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query 'Account' --output
-        text)
-      - echo -n ${ECR_PASSWORD} | docker login --username AWS --password-stdin
-        ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com
-      - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG
+      - echo -n ${ECR_PASSWORD} | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com
+      - REPOSITORY_URI=${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_DEFAULT_REGION}.amazonaws.com/${IMAGE_REPO_NAME}
+      - echo $REPOSITORY_URI
   
   build:
     commands:
       - echo Build started on `date`
       - echo Building the Docker image...
+      - echo Building image with URI: $REPOSITORY_URI
       - docker build --platform linux/amd64 -t $REPOSITORY_URI:latest .
       - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
   
