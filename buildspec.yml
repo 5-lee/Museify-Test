@@ -1,0 +1,39 @@
+version: 0.2
+
+# 빌드 환경 변수
+env:
+  git-credential-helper: 'yes'
+  variables:
+    # docker 파라미터 정의
+    ECS_CONTAINER_NAME: ecs-museify-container
+    IMAGE_REPO_NAME: ecs-meseify-ecr # aws ecr에 등록이 되어 있는 name
+    IMAGE_TAG: latest
+    AWS_DEFAULT_REGION: ap-northeast-2
+
+phases:
+  pre_build:
+    commands:
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region ap-northeast-2 | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.ap-northeast-2.amazonaws.com
+      - REPOSITORY_URI=$AWS_ACCOUNT_ID.dkr.ecr.ap-northeast-2.amazonaws.com/museify
+      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+  
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building the Docker image...
+      - docker build --platform linux/amd64 -t $REPOSITORY_URI:latest .
+      - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
+  
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Pushing the Docker image...
+      - docker push $REPOSITORY_URI:latest
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - echo Writing image definitions file...
+      - printf '{"ImageURI":"%s"}' $REPOSITORY_URI:$IMAGE_TAG > imageDefinitions.json
+
+artifacts:
+  files:
+    - imageDefinitions.json
